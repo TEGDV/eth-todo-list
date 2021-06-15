@@ -17,5 +17,8 @@ contract('TodoList', (accounts) => {
     const taskCount = await this.todolist.taskCount()
     const task = await this.todolist.tasks(taskCount)
     assert.equal(task.id.toNumber(), taskCount.toNumber())
+    assert.equal(task.completed, false)
+    assert.equal(task.content, 'Check out dappuniversity.com')
+    assert.equal(taskCount.toNumber(), 1)
   })
 })
