@@ -5,8 +5,8 @@ App = {
     await App.loadWeb3();
     await App.loadAccount();
     await App.loadContract();
-    await App.render();
     await App.renderTasks();
+    await App.render();
   },
   loadWeb3: async () => {
     if (typeof web3 !== "undefined") {
@@ -48,46 +48,81 @@ App = {
     App.account = App.accounts[0];
   },
   renderTasks: async () => {
-    const taskCount = await App.todolist.taskCount().then((count) => count.toNumber())
+    const taskCount = await App.todolist.taskCount().then(async (count) => count.toNumber());
     const $taskTemplate = $(".taskTemplate");
+
     for (var i = 1; i <= taskCount; i++) {
       //Fetch values
       const task = await App.todolist.tasks(i);
       const taskId = task.id.toNumber();
       const taskContent = task.content;
       const taskCompleted = task.completed;
-      console.log(taskContent)
       //Render in html
       const $newTaskTemplate = $taskTemplate.clone();
+      $newTaskTemplate.prop("id", "task" + taskId);
       $newTaskTemplate.find(".content").text(taskContent);
-      $newTaskTemplate.find("input").prop("name", taskId).prop("cheked", taskCompleted);
-      //.on('click', App.toggleCompleted)
+      $newTaskTemplate.find("input").prop("name", taskId).prop("checked", taskCompleted).on("click", App.toggleCompleted);
+
       if (taskCompleted) {
-        $("#completedTaskList").empty()
         $("#completedTaskList").append($newTaskTemplate);
-        $newTaskTemplate.show()
+        $newTaskTemplate.show();
       } else {
-        $("#taskList").empty()
         $("#taskList").append($newTaskTemplate);
-        $newTaskTemplate.show()
+        $newTaskTemplate.show();
       }
     }
   },
-
   render: async () => {
     if (App.loading) {
       return;
     }
     App.setLoading(true);
     $("#account").text(App.account);
-    await App.renderTasks();
+    App.setLoading(false);
+  },
+  createTask: async () => {
+    App.setLoading(true);
+    const content = $("#newTask").val();
+    const result = await App.todolist.createTask(content, { from: App.account });
+    const newTask = result.logs[0].args;
+    const newTaskId = newTask.id.toNumber();
+    const newTaskContent = newTask.content;
+    const newTaskCompleted = newTask.completed;
+    const $taskTemplate = $(".taskTemplate");
+    //Render in html
+    const $newTaskTemplate = $taskTemplate.clone();
+    $newTaskTemplate.prop("id", "task" + newTaskId);
+    $newTaskTemplate.find(".content").text(newTaskContent);
+    $newTaskTemplate.find("input").prop("name", newTaskId).prop("checked", newTaskCompleted).on("click", App.toggleCompleted);
+
+    $("#taskList").append($newTaskTemplate);
+    $newTaskTemplate.show();
+
+    App.setLoading(false);
+  },
+  toggleCompleted: async (e) => {
+    App.setLoading(true);
+    const taskId = e.target.name;
+    const result = await App.todolist.toggleCompleted(taskId, { from: App.account });
+    const event = result.logs[0].args;
+    if (event.completed) {
+      const $task = $("#taskList").find("#task" + event.id.toNumber());
+      const $toggledTask = $task.clone();
+      $task.remove();
+      $("#completedTaskList").append($toggledTask);
+    } else {
+      const $task = $("#completedTaskList").find("#task" + event.id.toNumber());
+      const $toggledTask = $task.clone();
+      $task.remove();
+      $("#taskList").append($toggledTask);
+    }
     App.setLoading(false);
   },
   setLoading: (boolean) => {
     App.loading = boolean;
     const loader = $("#loader");
     const content = $("#content");
-    if (boolean) {
+    if (App.loading) {
       loader.show();
       content.hide();
     } else {
